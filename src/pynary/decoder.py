@@ -40,7 +40,7 @@ class PYNDecoder:
 
     def load(self, b: bytes) -> object:
         if not b.startswith(self.magic):
-            raise MagicMissmatch(magic, b[: len(self.magic)])
+            raise MagicMissmatch(self.magic, b[: len(self.magic)])
 
         b = b[len(self.magic) :]
 
