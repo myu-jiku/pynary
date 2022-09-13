@@ -30,6 +30,10 @@ class PYNEncoder:
         self.add_type(list, _pack_list)
         self.add_type(dict, _pack_dict)
         self.add_type(type(None), _pack_none)
+        self.add_type(bool, _pack_bool)
+        self.add_type(float, _pack_float)
+        self.add_type(tuple, _pack_tuple)
+        self.add_type(set, _pack_set)
 
     def dump(self, o: object) -> bytes:
         try:
@@ -77,4 +81,22 @@ def _pack_dict(enc: dict, d: dict) -> bytes:
 
 def _pack_none(enc: dict, _) -> bytes:
     return enc[type(None)]["tag"]
+
+
+def _pack_bool(enc: dict, b: bool) -> bytes:
+    return enc[bool]["tag"] + struct.pack("<?", b)
+
+
+def _pack_float(enc: dict, f: float) -> bytes:
+    return enc[float]["tag"] + struct.pack("<d", f)
+
+
+def _pack_tuple(enc: dict, t: tuple) -> bytes:
+    content = b"".join(enc[type(item)]["func"](enc, item) for item in t)
+    return enc[tuple]["tag"] + struct.pack("<I", len(content)) + content
+
+
+def _pack_set(enc: dict, s: set) -> bytes:
+    content = b"".join(enc[type(item)]["func"](enc, item) for item in s)
+    return enc[set]["tag"] + struct.pack("<I", len(content)) + content
 

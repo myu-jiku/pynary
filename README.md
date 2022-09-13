@@ -6,10 +6,14 @@ Unlike the [pickle](https://docs.python.org/3/library/pickle.html) module, Pynar
 a small subset of python objects is supported (by default). Currently this
 includes:
 - 16 bit unsigned integers
-- strings of any length
-- lists of any size containing any other type
-- dictionaries of any size
+- str
+- list
+- dict
 - NoneType
+- bool
+- 32 bit float (double)
+- tuple
+- set
 
 Additional types can be supported with a [custom decoder and encoder](#modifying-the-decoder-and-encoder).
 

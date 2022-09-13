@@ -30,6 +30,10 @@ class PYNDecoder:
         self.add_type(_unpack_list)
         self.add_type(_unpack_dict)
         self.add_type(_unpack_none)
+        self.add_type(_unpack_bool)
+        self.add_type(_unpack_float)
+        self.add_type(_unpack_tuple)
+        self.add_type(_unpack_set)
 
     def load(self, b: bytes) -> object:
         if not b.startswith(self.magic):
@@ -62,7 +66,7 @@ class TagMissmatch(Exception):
         super().__init__(f"Tag '{tag}' not supported. Are you using the right decoder?")
 
 
-def _unpack_int(_, b: bytes) -> (int, int):
+def _unpack_int(_, b: bytes) -> (int, 4):
     return struct.unpack("<I", b[:4])[0], 4
 
 
@@ -113,4 +117,46 @@ def _unpack_dict(enc: dict, b: bytes) -> (dict, int):
 
 def _unpack_none(_, __) -> (None, 0):
     return None, 0
+
+
+def _unpack_bool(_, b: bytes) -> (bool, 1):
+    return struct.unpack("<?", b[:1])[0], 1
+
+
+def _unpack_float(_, f: float) -> (float, 8):
+    return struct.unpack("<d", f)[0], 8
+
+
+def _unpack_tuple(enc: dict, b: bytes) -> (tuple, int):
+    length: int = struct.unpack("<I", b[:4])[0]
+    content: bytes = b[4:4+length]
+
+    t: tuple = ()
+
+    while content:
+        o, ol = enc[content[:1]]["func"](
+            enc, content[1:]
+        )
+
+        content = content[ol+1:]
+        t = t + (o,)
+
+    return t, length + 4
+
+
+def _unpack_set(enc: dict, b: bytes) -> (set, int):
+    length: int = struct.unpack("<I", b[:4])[0]
+    content: bytes = b[4:4+length]
+
+    s: set = set()
+
+    while content:
+        o, ol = enc[content[:1]]["func"](
+            enc, content[1:]
+        )
+
+        content = content[ol+1:]
+        s = s | {o}
+
+    return s, length + 4
 
