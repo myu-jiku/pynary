@@ -34,7 +34,8 @@ raised.
 
 ## Modifying the Decoder and Encoder
 
-**WARNING:** Modifying the decoder and the encoder can cause
+**WARNING:** Modifying the decoder and the encoder can introduce security risks.
+Just be aware of that and act accordingly.
 
 ### Adding types to the default parser
 
