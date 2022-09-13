@@ -16,7 +16,10 @@ import struct
 
 
 class PYNEncoder:
-    __slots__ = ("encoding_table", "magic",)
+    __slots__ = (
+        "encoding_table",
+        "magic",
+    )
 
     encoding_table: dict
     magic: bytes
@@ -37,7 +40,9 @@ class PYNEncoder:
 
     def dump(self, o: object) -> bytes:
         try:
-            return self.magic + self.encoding_table[type(o)]["func"](self.encoding_table, o)
+            return self.magic + self.encoding_table[type(o)]["func"](
+                self.encoding_table, o
+            )
         except KeyError as E:
             t = E.args[0]
 
@@ -52,7 +57,9 @@ class PYNEncoder:
 
 class TypeMissmatch(Exception):
     def __init__(self, t: type) -> None:
-        super().__init__(f"Type {t} is not supported. Consider using a custom PYNEncoder and PYNDecoder.")
+        super().__init__(
+            f"Type {t} is not supported. Consider using a custom PYNEncoder and PYNDecoder."
+        )
 
 
 def _pack_int(enc: dict, i: int) -> bytes:
@@ -71,9 +78,7 @@ def _pack_list(enc: dict, l: list) -> bytes:
 
 def _pack_dict(enc: dict, d: dict) -> bytes:
     content = b"".join(
-        enc[type(item)]["func"](enc, item)
-        for items in d.items()
-        for item in items
+        enc[type(item)]["func"](enc, item) for items in d.items() for item in items
     )
 
     return enc[dict]["tag"] + struct.pack("<I", len(content)) + content
@@ -99,4 +104,3 @@ def _pack_tuple(enc: dict, t: tuple) -> bytes:
 def _pack_set(enc: dict, s: set) -> bytes:
     content = b"".join(enc[type(item)]["func"](enc, item) for item in s)
     return enc[set]["tag"] + struct.pack("<I", len(content)) + content
-

@@ -16,7 +16,10 @@ import struct
 
 
 class PYNDecoder:
-    __slots__ = ("encoding_table", "magic",)
+    __slots__ = (
+        "encoding_table",
+        "magic",
+    )
 
     encoding_table: dict
     magic: bytes
@@ -37,7 +40,7 @@ class PYNDecoder:
 
     def load(self, b: bytes) -> object:
         if not b.startswith(self.magic):
-            raise MagicMissmatch(magic, b[:len(self.magic)])
+            raise MagicMissmatch(magic, b[: len(self.magic)])
 
         b = b[len(self.magic) :]
 
@@ -48,7 +51,6 @@ class PYNDecoder:
             tag = E.args[0]
 
         raise TagMissmatch(tag)
-
 
     def add_type(self, function: callable) -> None:
         self.encoding_table[struct.pack("<B", len(self.encoding_table))] = {
@@ -72,21 +74,19 @@ def _unpack_int(_, b: bytes) -> (int, 4):
 
 def _unpack_str(_, b: bytes) -> (str, int):
     length: int = struct.unpack("<I", b[:4])[0]
-    return b[4:4+length].decode(), 4 + length
+    return b[4 : 4 + length].decode(), 4 + length
 
 
 def _unpack_list(enc: dict, b: bytes) -> (list, int):
     length: int = struct.unpack("<I", b[:4])[0]
-    content: bytes = b[4:4+length]
+    content: bytes = b[4 : 4 + length]
 
     l: list = []
 
     while content:
-        o, ol = enc[content[:1]]["func"](
-            enc, content[1:]
-        )
+        o, ol = enc[content[:1]]["func"](enc, content[1:])
 
-        content = content[ol+1:]
+        content = content[ol + 1 :]
         l.append(o)
 
     return l, length + 4
@@ -94,17 +94,15 @@ def _unpack_list(enc: dict, b: bytes) -> (list, int):
 
 def _unpack_dict(enc: dict, b: bytes) -> (dict, int):
     length: int = struct.unpack("<I", b[:4])[0]
-    content: bytes = b[4:4+length]
+    content: bytes = b[4 : 4 + length]
 
     d: dict = {}
     key: str = None
 
     while content:
-        o, ol = enc[content[:1]]["func"](
-            enc, content[1:]
-        )
+        o, ol = enc[content[:1]]["func"](enc, content[1:])
 
-        content = content[ol+1:]
+        content = content[ol + 1 :]
 
         if key is None:
             key = o
@@ -129,16 +127,14 @@ def _unpack_float(_, f: float) -> (float, 8):
 
 def _unpack_tuple(enc: dict, b: bytes) -> (tuple, int):
     length: int = struct.unpack("<I", b[:4])[0]
-    content: bytes = b[4:4+length]
+    content: bytes = b[4 : 4 + length]
 
     t: tuple = ()
 
     while content:
-        o, ol = enc[content[:1]]["func"](
-            enc, content[1:]
-        )
+        o, ol = enc[content[:1]]["func"](enc, content[1:])
 
-        content = content[ol+1:]
+        content = content[ol + 1 :]
         t = t + (o,)
 
     return t, length + 4
@@ -146,17 +142,14 @@ def _unpack_tuple(enc: dict, b: bytes) -> (tuple, int):
 
 def _unpack_set(enc: dict, b: bytes) -> (set, int):
     length: int = struct.unpack("<I", b[:4])[0]
-    content: bytes = b[4:4+length]
+    content: bytes = b[4 : 4 + length]
 
     s: set = set()
 
     while content:
-        o, ol = enc[content[:1]]["func"](
-            enc, content[1:]
-        )
+        o, ol = enc[content[:1]]["func"](enc, content[1:])
 
-        content = content[ol+1:]
+        content = content[ol + 1 :]
         s = s | {o}
 
     return s, length + 4
-

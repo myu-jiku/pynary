@@ -14,4 +14,3 @@
 
 from .decoder import PYNDecoder
 from .encoder import PYNEncoder
-

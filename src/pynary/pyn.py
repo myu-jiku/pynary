@@ -20,4 +20,3 @@ encoder = PYNEncoder()
 
 load: callable = decoder.load
 dump: callable = encoder.dump
-
