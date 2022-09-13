@@ -121,8 +121,8 @@ def _unpack_bool(_, b: bytes) -> (bool, 1):
     return struct.unpack("<?", b[:1])[0], 1
 
 
-def _unpack_float(_, f: float) -> (float, 8):
-    return struct.unpack("<d", f)[0], 8
+def _unpack_float(_, b: bytes) -> (float, 8):
+    return struct.unpack("<d", b[:8])[0], 8
 
 
 def _unpack_tuple(enc: dict, b: bytes) -> (tuple, int):
