@@ -12,11 +12,19 @@
 # You should have received a copy of the GNU General Public License along with Pynary. If
 # not, see <https://www.gnu.org/licenses/>
 
-from . import PYNDecoder, PYNEncoder
+from pynary import PYNBlank
 
-decoder = PYNDecoder()
-encoder = PYNEncoder()
+_pyn = PYNBlank()
 
+_pyn.add_none()
+_pyn.add_bool()
+_pyn.add_int()
+_pyn.add_float()
+_pyn.add_str()
+_pyn.add_list()
+_pyn.add_tuple()
+_pyn.add_set()
+_pyn.add_dict()
 
-load: callable = decoder.load
-dump: callable = encoder.dump
+dump: callable = _pyn.dump
+load: callable = _pyn.load

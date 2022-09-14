@@ -12,8 +12,6 @@
 # You should have received a copy of the GNU General Public License along with Pynary. If
 # not, see <https://www.gnu.org/licenses/>
 
-import struct
-
 
 class PYNDecoder:
     __slots__ = (
@@ -28,21 +26,14 @@ class PYNDecoder:
         self.encoding_table = {}
         self.magic = b"PYN1"
 
-        self.add_type(_unpack_int)
-        self.add_type(_unpack_str)
-        self.add_type(_unpack_list)
-        self.add_type(_unpack_dict)
-        self.add_type(_unpack_none)
-        self.add_type(_unpack_bool)
-        self.add_type(_unpack_float)
-        self.add_type(_unpack_tuple)
-        self.add_type(_unpack_set)
-
     def load(self, b: bytes) -> object:
-        if not b.startswith(self.magic):
+        if not isinstance(b, bytes):
+            raise TypeError(f"Expected {bytes}, but got {type(b)}.")
+
+        if not b[1 : 1 + int.from_bytes(b[:1], "big")] == self.magic:
             raise MagicMissmatch(self.magic, b[: len(self.magic)])
 
-        b = b[len(self.magic) :]
+        b = b[1 + len(self.magic) :]
 
         try:
             o, _ = self.encoding_table[b[:1]]["func"](self.encoding_table, b[1:])
@@ -53,7 +44,7 @@ class PYNDecoder:
         raise TagMissmatch(tag)
 
     def add_type(self, function: callable) -> None:
-        self.encoding_table[struct.pack("<B", len(self.encoding_table))] = {
+        self.encoding_table[len(self.encoding_table).to_bytes(1, "big")] = {
             "func": function,
         }
 
@@ -66,90 +57,3 @@ class MagicMissmatch(Exception):
 class TagMissmatch(Exception):
     def __init__(self, tag: bytes) -> None:
         super().__init__(f"Tag '{tag}' not supported. Are you using the right decoder?")
-
-
-def _unpack_int(_, b: bytes) -> (int, 4):
-    return struct.unpack("<I", b[:4])[0], 4
-
-
-def _unpack_str(_, b: bytes) -> (str, int):
-    length: int = struct.unpack("<I", b[:4])[0]
-    return b[4 : 4 + length].decode(), 4 + length
-
-
-def _unpack_list(enc: dict, b: bytes) -> (list, int):
-    length: int = struct.unpack("<I", b[:4])[0]
-    content: bytes = b[4 : 4 + length]
-
-    l: list = []
-
-    while content:
-        o, ol = enc[content[:1]]["func"](enc, content[1:])
-
-        content = content[ol + 1 :]
-        l.append(o)
-
-    return l, length + 4
-
-
-def _unpack_dict(enc: dict, b: bytes) -> (dict, int):
-    length: int = struct.unpack("<I", b[:4])[0]
-    content: bytes = b[4 : 4 + length]
-
-    d: dict = {}
-    key: str = None
-
-    while content:
-        o, ol = enc[content[:1]]["func"](enc, content[1:])
-
-        content = content[ol + 1 :]
-
-        if key is None:
-            key = o
-        else:
-            d[key] = o
-            key = None
-
-    return d, length + 4
-
-
-def _unpack_none(_, __) -> (None, 0):
-    return None, 0
-
-
-def _unpack_bool(_, b: bytes) -> (bool, 1):
-    return struct.unpack("<?", b[:1])[0], 1
-
-
-def _unpack_float(_, b: bytes) -> (float, 8):
-    return struct.unpack("<d", b[:8])[0], 8
-
-
-def _unpack_tuple(enc: dict, b: bytes) -> (tuple, int):
-    length: int = struct.unpack("<I", b[:4])[0]
-    content: bytes = b[4 : 4 + length]
-
-    t: tuple = ()
-
-    while content:
-        o, ol = enc[content[:1]]["func"](enc, content[1:])
-
-        content = content[ol + 1 :]
-        t = t + (o,)
-
-    return t, length + 4
-
-
-def _unpack_set(enc: dict, b: bytes) -> (set, int):
-    length: int = struct.unpack("<I", b[:4])[0]
-    content: bytes = b[4 : 4 + length]
-
-    s: set = set()
-
-    while content:
-        o, ol = enc[content[:1]]["func"](enc, content[1:])
-
-        content = content[ol + 1 :]
-        s = s | {o}
-
-    return s, length + 4
