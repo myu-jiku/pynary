@@ -104,7 +104,7 @@ load: callable = _pyn.decoder.load
 
 Now you can use your custom parser just like you would use the default.
 
-```
+```python
 import my_pyn
 
 my_object = MyClass()
