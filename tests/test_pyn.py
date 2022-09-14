@@ -1,65 +1,72 @@
+# Copyright 2022 Myu/Jiku
+#
+# This python module file is part of the Pynary package.
+# Pynary is free software: you can redistribute it and/or modify it under the terms of the
+# GNU General Public License as published by the Free Software Foundation, either
+# version 3 of the License, or (at your option) any later version.
+#
+# Pynary is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with Pynary. If
+# not, see <https://www.gnu.org/licenses/>
+
 import unittest
 
-from pynary import pyn, decoder, encoder
+from pynary import pyn, PYNBlank
 
 
-class TestPyn(unittest.TestCase):
+class TestDecoder(unittest.TestCase):
     def _compare_io(self, input_value):
         output_value = pyn.load(pyn.dump(input_value))
-        self.assertEquals(input_value, output_value)
-
-    def test_magic(self):
-        self.assertEquals(
-            None,
-            pyn.load(pyn.encoder.magic + pyn.encoder.encoding_table[type(None)]["tag"]),
-        )
-
-        with self.assertRaises(decoder.MagicMissmatch):
-            pyn.load(b"PYN0")
-
-        with self.assertRaises(decoder.MagicMissmatch):
-            pyn.load(pyn.encoder.magic + b"0\x00\x01\x00\x00\x00")
-
-    def test_int(self):
-        self._compare_io(2022)
-
-    def test_str(self):
-        self._compare_io("pynary")
-
-    def test_list(self):
-        self._compare_io([1, 2, ["python", 42]])
-        self._compare_io([[i * x for x in range(100)] for i in range(100)])
-
-    def test_dict(self):
-        self._compare_io({"こんにちは": "世界"})
-        self._compare_io({s: [{i: f"🍌banana{i}"} for i in range(100)] for s in "data"})
+        self.assertEqual(input_value, output_value)
 
     def test_none(self):
         self._compare_io(None)
-        self._compare_io([None, None, {"": None}, None])
+        self._compare_io([None] * 4)
 
     def test_bool(self):
         self._compare_io(True)
-        self._compare_io(
-            {
-                "🍌": True,
-                "🍍": False,
-                "list": [1, True, "three", False, 5, 6, 7, 8, None, True],
-            }
-        )
+        self._compare_io([True, False, True, False, False])
+
+    def test_int(self):
+        self._compare_io(45)
+
+        _pyn = PYNBlank()
+
+        _pyn.add_int(signed=True)
+        input_value = -1
+        output_value = _pyn.load(_pyn.dump(input_value))
+        self.assertEqual(input_value, output_value)
+
+        _pyn.add_int(6)
+        input_value = 10000000000
+        output_value = _pyn.load(_pyn.dump(input_value))
+        self.assertEqual(input_value, output_value)
 
     def test_float(self):
-        self._compare_io(1.337)
-        self._compare_io([3.14159265359, {8.9875517923: [42.0, "test"]}])
+        self._compare_io(0.0)
+        self._compare_io(-1.03)
+        self._compare_io(3.1415926535)
+
+    def test_str(self):
+        self._compare_io("test")
+        self._compare_io(list("pynary"))
 
     def test_tuple(self):
-        self._compare_io((1, 2, 3, 4))
-        self._compare_io(((1, 2, 3, 4), [1, 2, 3, 4], {1: 2, 3: 4}, None))
+        self._compare_io((1, 2, 3))
+        self._compare_io(tuple((l,) for l in "tuple"))
+
+    def test_list(self):
+        self._compare_io(list(range(100)))
+        self._compare_io([i + j for i in range(10) for j in range(10)])
 
     def test_set(self):
-        self._compare_io({1, 3, 2})
-        self._compare_io({tuple(range(10)), "pynary", True})
+        self._compare_io({1, 2, 3})
+        self._compare_io({(1, 2, 3), ("four", "five", "six"), (True, False, None)})
 
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_dict(self):
+        self._compare_io({})
+        self._compare_io({"key": "value"})
+        self._compare_io({"test": {"test": {"test": list(range(50))}}})
