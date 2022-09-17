@@ -36,7 +36,7 @@ def build_int(size: int = 4, signed: bool = False) -> (callable, callable):
     def encode(enc: dict, i: int) -> bytes:
         return enc[int]["tag"] + i.to_bytes(size, "big", signed=signed)
 
-    def decode(_, b: bytes) -> int:
+    def decode(_, b: bytes) -> (int, int):
         return int.from_bytes(b[:size], "big", signed=signed), size
 
     return encode, decode
@@ -59,7 +59,7 @@ def build_str(size: int = 4) -> (callable, callable):
         bytestr: bytes = s.encode()
         return enc[str]["tag"] + len(bytestr).to_bytes(size, "big") + bytestr
 
-    def decode(_, b: bytes) -> (callable, callable):
+    def decode(_, b: bytes) -> (str, int):
         length: int = int.from_bytes(b[:size], "big")
         return b[size : size + length].decode(), size + length
 
@@ -71,7 +71,7 @@ def build_tuple(size: int = 4) -> (callable, callable):
         content = b"".join(enc[type(item)]["func"](enc, item) for item in t)
         return enc[tuple]["tag"] + len(content).to_bytes(size, "big") + content
 
-    def decode(enc: dict, b: bytes) -> tuple:
+    def decode(enc: dict, b: bytes) -> (tuple, int):
         length: int = int.from_bytes(b[:size], "big")
         end: int = size + length
         content: bytes = b[size:end]
@@ -94,7 +94,7 @@ def build_list(size: int = 4) -> (callable, callable):
         content = b"".join(enc[type(item)]["func"](enc, item) for item in l)
         return enc[list]["tag"] + len(content).to_bytes(size, "big") + content
 
-    def decode(enc: dict, b: bytes) -> list:
+    def decode(enc: dict, b: bytes) -> (list, int):
         length: int = int.from_bytes(b[:size], "big")
         end: int = size + length
         content: bytes = b[size:end]
@@ -117,7 +117,7 @@ def build_set(size: int) -> (callable, callable):
         content = b"".join(enc[type(item)]["func"](enc, item) for item in s)
         return enc[set]["tag"] + len(content).to_bytes(size, "big") + content
 
-    def decode(enc: dict, b: bytes) -> set:
+    def decode(enc: dict, b: bytes) -> (set, int):
         length: int = int.from_bytes(b[:size], "big")
         end: int = size + length
         content: bytes = b[size:end]
@@ -150,7 +150,7 @@ def build_dict(size: int = 4) -> (callable, callable):
             + values
         )
 
-    def decode(enc: dict, b: bytes) -> dict:
+    def decode(enc: dict, b: bytes) -> (dict, int):
         length_keys: int = int.from_bytes(b[:size], "big")
         length_vals: int = int.from_bytes(b[size : 2 * size], "big")
 
