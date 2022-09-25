@@ -36,16 +36,17 @@ class PYNDecoder:
         b = b[1 + len(self.magic) :]
 
         try:
-            o, _ = self.encoding_table[b[:1]]["func"](self.encoding_table, b[1:])
+            o = self.encoding_table[b[:1]]["func"](self.encoding_table, b[1:])
             return o
         except KeyError as E:
             tag = E.args[0]
 
         raise TagMissmatch(tag)
 
-    def add_type(self, function: callable) -> None:
+    def add_type(self, function: callable, len_f: callable = lambda: None) -> None:
         self.encoding_table[len(self.encoding_table).to_bytes(1, "big")] = {
             "func": function,
+            "leng": len_f,
         }
 
 

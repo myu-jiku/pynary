@@ -17,41 +17,49 @@ import struct
 
 def build_none() -> (callable, callable):
     encode = lambda enc, _: enc[type(None)]["tag"]
-    decode = lambda _, __: (None, 0)
+    decode = lambda _, __: None
+    length = lambda _: 0
 
-    return encode, decode
+    return encode, decode, length
 
 
 def build_bool() -> (callable, callable):
     def encode(enc: dict, b: bool) -> bytes:
         return enc[bool]["tag"] + b.to_bytes(1, "big")
 
-    def decode(_, b: bytes) -> (bool, 1):
-        return bool.from_bytes(b[:1], "big"), 1
+    def decode(_, b: bytes) -> bool:
+        return bool.from_bytes(b[:1], "big")
 
-    return encode, decode
+    def length(b: bytes) -> int:
+        return 1
+
+    return encode, decode, length
 
 
 def build_int(size: int = 4, signed: bool = False) -> (callable, callable):
     def encode(enc: dict, i: int) -> bytes:
         return enc[int]["tag"] + i.to_bytes(size, "big", signed=signed)
 
-    def decode(_, b: bytes) -> (int, int):
-        return int.from_bytes(b[:size], "big", signed=signed), size
+    def decode(_, b: bytes) -> int:
+        return int.from_bytes(b[:size], "big", signed=signed)
 
-    return encode, decode
+    def length(_) -> int:
+        return size
+
+    return encode, decode, length
 
 
 def build_float(_64bit: bool = True) -> (callable, callable):
     def encode(enc: dict, f: float) -> bytes:
         return enc[float]["tag"] + struct.pack(f">{('f', 'd')[_64bit]}", f)
 
-    def decode(_, b: bytes) -> (float, int):
-        return struct.unpack(f">{('f', 'd')[_64bit]}", b[: 4 * (1 + _64bit)])[0], 4 * (
-            1 + _64bit
-        )
+    def decode(_, b: bytes) -> float:
+        return struct.unpack(f">{('f', 'd')[_64bit]}", b[: 4 * (1 + _64bit)])[0]
 
-    return encode, decode
+    def length(_) -> int:
+        return 4 * (1 + _64bit)
+
+    return encode, decode, length
 
 
 def build_str(size: int = 4) -> (callable, callable):
@@ -59,11 +67,13 @@ def build_str(size: int = 4) -> (callable, callable):
         bytestr: bytes = s.encode()
         return enc[str]["tag"] + len(bytestr).to_bytes(size, "big") + bytestr
 
-    def decode(_, b: bytes) -> (str, int):
-        length: int = int.from_bytes(b[:size], "big")
-        return b[size : size + length].decode(), size + length
+    def decode(_, b: bytes) -> str:
+        return b[size:].decode()
 
-    return encode, decode
+    def length(b: bytes) -> int:
+        return size + int.from_bytes(b[:size], "big")
+
+    return encode, decode, length
 
 
 def build_tuple(size: int = 4) -> (callable, callable):
@@ -71,22 +81,25 @@ def build_tuple(size: int = 4) -> (callable, callable):
         content = b"".join(enc[type(item)]["func"](enc, item) for item in t)
         return enc[tuple]["tag"] + len(content).to_bytes(size, "big") + content
 
-    def decode(enc: dict, b: bytes) -> (tuple, int):
-        length: int = int.from_bytes(b[:size], "big")
-        end: int = size + length
-        content: bytes = b[size:end]
+    def decode(enc: dict, b: bytes) -> tuple:
+        content: bytes = b[size:]
 
         t: tuple = ()
 
         while content:
-            o, ol = enc[content[:1]]["func"](enc, content[1:])
+            ot = enc[content[:1]]
+            ol = ot["leng"](content[1 : 1 + size * 2])
+            o = ot["func"](enc, content[1 : 1 + ol])
 
             content = content[ol + 1 :]
             t = t + (o,)
 
-        return t, end
+        return t
 
-    return encode, decode
+    def length(b: bytes) -> int:
+        return size + int.from_bytes(b[:size], "big")
+
+    return encode, decode, length
 
 
 def build_list(size: int = 4) -> (callable, callable):
@@ -94,22 +107,25 @@ def build_list(size: int = 4) -> (callable, callable):
         content = b"".join(enc[type(item)]["func"](enc, item) for item in l)
         return enc[list]["tag"] + len(content).to_bytes(size, "big") + content
 
-    def decode(enc: dict, b: bytes) -> (list, int):
-        length: int = int.from_bytes(b[:size], "big")
-        end: int = size + length
-        content: bytes = b[size:end]
+    def decode(enc: dict, b: bytes) -> list:
+        content: bytes = b[size:]
 
         l: list = []
 
         while content:
-            o, ol = enc[content[:1]]["func"](enc, content[1:])
+            ot = enc[content[:1]]
+            ol = ot["leng"](content[1 : 1 + size * 2])
+            o = ot["func"](enc, content[1 : 1 + ol])
 
             content = content[ol + 1 :]
             l.append(o)
 
-        return l, end
+        return l
 
-    return encode, decode
+    def length(b: bytes) -> int:
+        return size + int.from_bytes(b[:size], "big")
+
+    return encode, decode, length
 
 
 def build_set(size: int) -> (callable, callable):
@@ -117,22 +133,25 @@ def build_set(size: int) -> (callable, callable):
         content = b"".join(enc[type(item)]["func"](enc, item) for item in s)
         return enc[set]["tag"] + len(content).to_bytes(size, "big") + content
 
-    def decode(enc: dict, b: bytes) -> (set, int):
-        length: int = int.from_bytes(b[:size], "big")
-        end: int = size + length
-        content: bytes = b[size:end]
+    def decode(enc: dict, b: bytes) -> set:
+        content: bytes = b[size:]
 
         s: set = set()
 
         while content:
-            o, ol = enc[content[:1]]["func"](enc, content[1:])
+            ot = enc[content[:1]]
+            ol = ot["leng"](content[1 : 1 + size * 2])
+            o = ot["func"](enc, content[1 : 1 + ol])
 
             content = content[ol + 1 :]
             s = s | {o}
 
-        return s, end
+        return s
 
-    return encode, decode
+    def length(b: bytes) -> int:
+        return size + int.from_bytes(b[:size], "big")
+
+    return encode, decode, length
 
 
 def build_dict(size: int = 4) -> (callable, callable):
@@ -150,7 +169,7 @@ def build_dict(size: int = 4) -> (callable, callable):
             + values
         )
 
-    def decode(enc: dict, b: bytes) -> (dict, int):
+    def decode(enc: dict, b: bytes) -> dict:
         length_keys: int = int.from_bytes(b[:size], "big")
         length_vals: int = int.from_bytes(b[size : 2 * size], "big")
 
@@ -161,14 +180,25 @@ def build_dict(size: int = 4) -> (callable, callable):
         d: dict = {}
 
         while key_bytes:
-            k, kl = enc[key_bytes[:1]]["func"](enc, key_bytes[1:])
-            v, vl = enc[val_bytes[:1]]["func"](enc, val_bytes[1:])
+            kt = enc[key_bytes[:1]]
+            kl = kt["leng"](key_bytes[1 : 1 + size * 2])
+            k = kt["func"](enc, key_bytes[1 : 1 + kl])
+
+            vt = enc[val_bytes[:1]]
+            vl = vt["leng"](val_bytes[1 : 1 + size * 2])
+            v = vt["func"](enc, val_bytes[1 : 1 + vl])
 
             key_bytes = key_bytes[kl + 1 :]
             val_bytes = val_bytes[vl + 1 :]
 
             d[k] = v
 
-        return d, end
+        return d
 
-    return encode, decode
+    def length(b: bytes) -> int:
+        length_keys: int = int.from_bytes(b[:size], "big")
+        length_vals: int = int.from_bytes(b[size : 2 * size], "big")
+
+        return 2 * size + length_keys + length_vals
+
+    return encode, decode, length
