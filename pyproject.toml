@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pynary"
-version = "1.2.0"
+version = "1.2.1"
 requires-python = ">=3.7"
 readme = "README.md"
 license = { file="COPYING" }
